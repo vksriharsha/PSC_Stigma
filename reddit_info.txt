@@ -1,0 +1,32 @@
+dApp Name: Command-Line:Python:psc.stigma:0.0.1 (by /u/crawler_01)
+App ID: V08Pn1YEXyjTvw
+secret : -n7x3ejKJQ3ewO2Dc_Cxx596_dWTdA
+
+Username: crawler_01
+Password: PSC_Stigma01
+
+
+
+create table reddit_posts(created_utc int, subreddit varchar(50), author varchar(40), dom varchar(70), url varchar(250), num_comments int,  score Int, ups Int, downs Int, title varchar(250), selftext text, saved boolean, id varchar(20), from_kind varchar(20), glided int, from_ varchar(20), stickied boolean, retrieved_on int, over_18 boolean, thumbnail varchar(20), subreddit_id varchar(20), hide_score boolean, link_flair_css_class varchar(20), author_flair_css_class varchar(30), archived boolean, is_self boolean, from_id varchar(20), permalink varchar(500), name varchar(100), author_flair_text varchar(100), quarantine boolean, link_flair_text varchar(100), distinguished varchar(30))
+
+
+create table reddit_comments(body Text, score_hidden boolean, archived boolean, name varchar(70), author varchar(40), author_flair_text varchar(70),  downs Int, created_utc Int, subreddit_id varchar(30), link_id varchar(250), parent_id varchar(30), score Int, retrieved_on int, controversiality Int, glided int, id varchar(30), subreddit varchar(50), ups int, distinguished varchar(30), author_flair_css_class varchar(50));
+
+
+
+LOAD DATA LOCAL INFILE '/Users/harshavk/Documents/Harsha/Spring2021/DS401/Data/alcoholism_4.csv' 
+INTO TABLE reddit_posts 
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+
+
+select subreddit,count(distinct author) from reddit_posts group by subreddit
+INTO OUTFILE '/Users/harshavk/Documents/Harsha/Spring2021/DS401/Data/output.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
+
+
+SELECT * FROM `fh-bigquery.reddit_posts.2019_08` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2019_07` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2019_06` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2019_05` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2019_04` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2019_03` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2019_02` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2019_01` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_12` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_11` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_10` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_09` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_08` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_07` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_06` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_05` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_04` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_03` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_02` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2018_01` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_12` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_11` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_10` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_09` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_08` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_07` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_06` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_05` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_04` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_03` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_02` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2017_01` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_12` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_11` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_10` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_09` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_08` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_07` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_06` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_05` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_04` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_03` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_02` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2016_01` where subreddit = 'cripplingalcoholism' Union all SELECT * FROM `fh-bigquery.reddit_posts.2015_12` where subreddit = 'cripplingalcoholism';
