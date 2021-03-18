@@ -1,0 +1,11 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2513
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww28600\viewh15620\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 create table reddit_posts(created_utc int, subreddit varchar(50), author varchar(40), dom varchar(70), url text, num_comments int,  score Int, ups Int, downs Int, title text, selftext text, saved boolean, id varchar(20), from_kind varchar(20), glided int, from_ varchar(20), stickied boolean, retrieved_on int, over_18 boolean, thumbnail blob, subreddit_id varchar(20), hide_score boolean, link_flair_css_class varchar(20), author_flair_css_class varchar(30), archived boolean, is_self boolean, from_id varchar(20), permalink varchar(500), name varchar(100), author_flair_text varchar(100), quarantine boolean, link_flair_text varchar(100), distinguished varchar(30))\
+\
+\
+create table reddit_comments(body Text, score_hidden boolean, archived boolean, name varchar(70), author varchar(40), author_flair_text varchar(70),  downs Int, created_utc Int, subreddit_id varchar(30), link_id varchar(250), parent_id varchar(30), score Int, retrieved_on int, controversiality Int, glided int, id varchar(30), subreddit varchar(50), ups int, distinguished varchar(30), author_flair_css_class varchar(50));}
