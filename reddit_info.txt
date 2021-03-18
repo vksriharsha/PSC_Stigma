@@ -1,11 +1,3 @@
-dApp Name: Command-Line:Python:psc.stigma:0.0.1 (by /u/crawler_01)
-App ID: V08Pn1YEXyjTvw
-secret : -n7x3ejKJQ3ewO2Dc_Cxx596_dWTdA
-
-Username: crawler_01
-Password: PSC_Stigma01
-
-
 
 create table reddit_posts(created_utc int, subreddit varchar(50), author varchar(40), dom varchar(70), url varchar(250), num_comments int,  score Int, ups Int, downs Int, title varchar(250), selftext text, saved boolean, id varchar(20), from_kind varchar(20), glided int, from_ varchar(20), stickied boolean, retrieved_on int, over_18 boolean, thumbnail varchar(20), subreddit_id varchar(20), hide_score boolean, link_flair_css_class varchar(20), author_flair_css_class varchar(30), archived boolean, is_self boolean, from_id varchar(20), permalink varchar(500), name varchar(100), author_flair_text varchar(100), quarantine boolean, link_flair_text varchar(100), distinguished varchar(30))
 
