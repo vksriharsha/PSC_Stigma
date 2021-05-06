@@ -1,0 +1,126 @@
+---
+title: "Stigma Data Cleaning"
+author: "Tim Potter"
+date: "4/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Research Question 1
+
+Do conversations with Stigma words present last longer or shorter than those without stigma words for each subreddit?
+
+This file will serve as a place to clean the data, then I'm thinking I will export to VSC to run a python script to get through the analysis
+
+```{r libs}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(tidyr)
+library(tidytext)
+library(qdap)
+library(tidyverse)
+library(readxl)
+library(sjmisc)
+```
+
+
+
+```{r data, echo=FALSE}
+posts <- read_csv("G:/Tim/Documents/homework/ds401/sql/reddit_posts_dryalcoholics.csv") %>%
+  select(created_utc, title, selftext, score, num_comments, name) %>%
+  filter(title != "[deleted by user]")
+
+##Cleaning the post titles
+posts$title <- gsub("[^[:alnum:]]"," ", posts$title)
+posts$title <- gsub("[0-9]*","", posts$title)
+posts <- posts %>%
+  filter(grepl("[[:alpha:]]", title))
+#posts$title <- rm_stopwords(posts$title)
+posts$title <- tolower(posts$title)
+
+##Cleaning the post selftext
+posts$selftext <- gsub("[^[:alnum:]]"," ", posts$selftext)
+posts$selftext <- gsub("[0-9]*","", posts$selftext)
+
+posts$selftext <- na_if(posts$selftext, " deleted ")
+posts$selftext <- na_if(posts$selftext, " removed ")
+
+#This doesn't work yet, so some columns are full of spaces
+#posts$selftext <- na_if(posts$selftext, grepl("[[:alpha:]]",posts$selftext))
+posts$selftext <- tolower(posts$selftext)
+
+posts <- posts %>%
+  filter(grepl("[[:digit:]]", created_utc))
+
+#Filter out posts with a bad id
+posts <- posts %>%
+  filter(name != "t3_" & name != "t3_0" & name != "t3_1")
+
+posts <- posts %>%
+  filter(!str_detect(name, "\\s+"))
+
+posts <- posts %>%
+  filter(name != "t3_NULL" & name != "t3_[deleted]" & name != "t3_1")
+
+str_detect(posts$name, "\\s+")
+posts$created_utc <- as.numeric(posts$created_utc)
+posts$num_comments <- as.numeric(posts$num_comments)
+posts$score <- as.numeric(posts$score)
+##Load the comments now
+comments <- read_csv("G:/Tim/Documents/homework/ds401/sql/reddit_comments_dryalcoholics.csv")
+
+##Not sure what columns I need, but I can tell that some are completely unnecessary
+comments <- comments %>%
+  select(body, author, created_utc, link_id, parent_id, score, id) %>%
+  filter(!grepl("[[:alpha:]]", created_utc)) %>%
+  drop_na() %>%
+  filter(created_utc != "0" & created_utc != "5'4\"") %>%
+  mutate(comment_id = paste("t1_", id, sep = ""))
+
+comments$score <- as.numeric(comments$score)
+
+
+##Clean the comment body
+comments$body <- gsub("[^[:alnum:]]"," ", comments$body)
+comments$body <- gsub("[0-9]*","", comments$body)
+#comments <- comments %>%
+#  filter(grepl("[[:alpha:]]", comments))
+
+comments$body <- tolower(comments$body)
+
+##Remove this bot account
+comments <- comments %>%
+  filter(author != "imguralbumbot")
+
+##Get the AFINN dictionary for text analysis
+library(tidytext)
+afinn <- get_sentiments("afinn")
+
+##Add two new variables
+comments <- comments %>%
+  mutate(afinn_score = 0, afinn_words_scored = 0)
+
+##Join the AFINN dictionary to the comments data, find the sentiment score of each comment
+for(i in 1:nrow(comments)){
+  line <- comments[i,"body"] %>%
+    unnest_tokens(word,body) %>%
+    inner_join(afinn)
+  comments[i,"afinn_words_scored"] = nrow(line)
+  comments[i,"afinn_score"] = sum(line$value)
+}
+```
+
+Export the cleaned data for now, as the runtime in RStudio is way too long
+
+```{r export}
+
+write_excel_csv(posts, "G:/Tim/Documents/homework/ds401/sql/reddit_posts_dryalcoholics_clean.csv")
+write_excel_csv(comments, "G:/Tim/Documents/homework/ds401/sql/reddit_comments_dryalcoholics_clean.csv")
+
+
+```

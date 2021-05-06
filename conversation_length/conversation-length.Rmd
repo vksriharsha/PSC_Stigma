@@ -1,0 +1,898 @@
+---
+title: "Analysis of Stigma's Effect on Reddit Conversations"
+author: "Tim Potter"
+date: "5/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(tidyr)
+library(tidytext)
+library(qdap)
+library(tidyverse)
+library(ggpubr)
+library(knitr)
+```
+
+## Background
+
+
+Words matter. Stigma language is words and phrases that carry a mark of shame or disgrace in society, sometimes marking a person or object as less than others. In the context of Substance Use Disorder, words like "junkie", "addict", or "dirty" can be seen as highly stigmatizing words to those who hear them. This matters because people who use or abuse substances and experience stigma are less likely to receive medical treatment or call 911 is cases of emergencies. Social stigma can cost people their lives, so it is important that we know more about how it affects users.
+
+We pulled data from a number of Reddit communities centered around drug and alcohol use to analyze the impact of stigmatized language on the conversations between users. The question, in particular, being considered here is this; does the use of a stigma word or words have a measurable impact on the average length of a conversation? We want to see if these words generate a strong response or maybe cut the conversation short.
+
+
+
+## r/cocaine
+
+We started with the cocaine dataset. This was a rather large dataset, with over 50,000 posts and 460,000 comments pulled from the subreddit. The Reddit users on this subreddit are primarily active users of cocaine. After cleaning and pairing the tables, we were left with a data frame of over 56,000 conversations that included the post, the number of comments, the number of words and characters within the comments, and if a post contained any stigma language.
+
+For the purposes of our analysis, we will be dividing the conversations into three groups: posts that contain no stigma language at all, posts that contain any stigma words, and posts that contain a highly stigmatizing, or stigma alert word. The cocaine dataset has 8961 conversations with a stigma word in the post and 1608 of those including one of our stigma alert words.
+
+
+
+```{r c1, warning=FALSE, message=FALSE}
+data <- read_csv("G:/Tim/Documents/homework/ds401/sql/python_output.csv")
+
+table(data$contains_stigma)
+table(data$stigma_alert)
+```
+
+First we looked at the average number of comments per conversation. Before breaking it down by group, the average number of comments per conversation is 6.53. 
+
+```{r c2, echo=FALSE}
+mean_no_stigma <- data %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean)
+
+
+mean_stigma <- data %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean)
+
+
+mean_stigma_alert <- data %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(mean_no_stigma, mean_stigma, mean_stigma_alert)
+
+mean_values <- data.frame(type, value)
+mean_values$type <- as.factor(mean_values$type)
+mean_values$type <- reorder(mean_values$type, c(3,2,1))
+
+mean_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(value, digits = 2)), hjust=1.6, color="white", size=3.5)+
+  coord_flip() +
+  ggtitle("Average Number of Comments within a Reddit Conversation") +
+  xlab("Group") +
+  ylab("Number of Comments") +
+  labs(caption = "From r/cocaine") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+We can already see a divide between the groups. Posts that contain stigma words are generating over 1 whole comment more than those without any, and the stigma alert posts show an even more striking difference. 
+
+One explanation for this may be that the posts with no stigma words have a higher frequency of receiving no comments, but if we remove all such conversations, we get the same pattern as before.
+
+```{r c3, echo=FALSE}
+d1 <- data %>%
+  filter(num_comments > 0)
+
+
+mean_no_stigma <- d1 %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean)
+
+
+mean_stigma <- d1 %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean)
+
+
+mean_stigma_alert <- d1 %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(mean_no_stigma, mean_stigma, mean_stigma_alert)
+
+mean_values <- data.frame(type, value)
+mean_values$type <- as.factor(mean_values$type)
+mean_values$type <- reorder(mean_values$type, c(3,2,1))
+
+mean_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(value, digits = 2)), hjust=1.6, color="white", size=3.5)+
+  coord_flip() +
+  ggtitle("Average Number of Comments within a Reddit Conversation") +
+  xlab("Group") +
+  ylab("Number of Comments") +
+  labs(caption = "Posts that have at Least 1 Comment\nFrom r/cocaine") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+One way or another, the stigmatizing words produce more comments than those without.
+
+Next we looked at some other metrics to see if the pattern holds. 
+
+```{r c4, echo=FALSE}
+mean_no_stigma <- data %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean)
+
+
+mean_stigma <- data %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean)
+
+
+mean_stigma_alert <- data %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c( mean_no_stigma, mean_stigma, mean_stigma_alert)
+
+mean_values <- data.frame(type, value)
+mean_values$type <- as.factor(mean_values$type)
+mean_values$type <- reorder(mean_values$type, c(3,2,1))
+
+mean_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(value, digits = 2)), hjust=1.6, color="white", size=3.5)+
+  coord_flip() +
+  ggtitle("Average Number of Words within a Reddit Conversation") +
+  xlab("Group") +
+  ylab("Number of Words") +
+  labs(caption = "From r/cocaine") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+mean_no_stigma <- data %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_character_count)) %>%
+  pull(mean)
+
+
+mean_stigma <- data %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_character_count)) %>%
+  pull(mean)
+
+
+mean_stigma_alert <- data %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_character_count)) %>%
+  pull(mean)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c( mean_no_stigma, mean_stigma, mean_stigma_alert)
+
+mean_values <- data.frame(type, value)
+mean_values$type <- as.factor(mean_values$type)
+mean_values$type <- reorder(mean_values$type, c(3,2,1))
+
+mean_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(value, digits = 2)), hjust=1.6, color="white", size=3.5)+
+  coord_flip() +
+  ggtitle("Average Number of Characters within a Reddit Conversation") +
+  xlab("Group") +
+  ylab("Number of Characters") +
+  labs(caption = "From r/cocaine") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+We looked at the average number of words, characters, deleted posts, and length of each comment. Every graph produced the same trend; the stigma group produces more of a response than the non-stigma group. In most cases, it's rather not close. If we remove the posts with no comments as before, it does not change our results.
+
+## Further Analysis
+
+From looking at our data it is clear that, in the r/cocaine subreddit, posts that contain a stigma word produce more comments and longer comments at that. Now there are a couple of things we want to look at. 
+
+(1) Does this trend occur in more subreddit? More specifically, can we see a difference between subreddits populated by current users and former users?
+
+(2) We see an obvious trend in the conversation length, but do we see a similar trend in the text's sentiment?
+
+## Other Subreddits
+
+Four additional subreddits were chosen for analysis. Two of them, r/meth and r/alcohol, are used primarily by substance users, much like the cocaine subreddit. The other two, r/dryalcoholics and r/addiction, are used by former users instead, potentially people who have had trouble with substance abuse in the past. This way we could see if different types of users react to stigma words differently. 
+
+```{r c5, echo=FALSE, message=FALSE, warning=FALSE}
+meth <- read_csv("G:/Tim/Documents/homework/ds401/sql/meth_output.csv")
+addiction <- read_csv("G:/Tim/Documents/homework/ds401/sql/addiction_output.csv")
+alcohol <- read_csv("G:/Tim/Documents/homework/ds401/sql/alcohol_output.csv")
+dry <- read_csv("G:/Tim/Documents/homework/ds401/sql/dryalcoholics_output.csv")
+
+meth_no_stigma <- meth %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+meth_stigma <- meth %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+meth_stigma_alert <- meth %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(meth_no_stigma, meth_stigma, meth_stigma_alert)
+meth_values <- data.frame(type, value)
+meth_values$type <- as.factor(meth_values$type)
+meth_values$type <- reorder(meth_values$type, c(3,2,1))
+
+addiction_no_stigma <- addiction %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+addiction_stigma <- addiction %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+addiction_stigma_alert <- addiction %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(addiction_no_stigma, addiction_stigma, addiction_stigma_alert)
+addiction_values <- data.frame(type, value)
+addiction_values$type <- as.factor(addiction_values$type)
+addiction_values$type <- reorder(addiction_values$type, c(3,2,1))
+
+alcohol_no_stigma <- alcohol %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+alcohol_stigma <- alcohol %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+alcohol_stigma_alert <- alcohol %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(alcohol_no_stigma, alcohol_stigma, alcohol_stigma_alert)
+alcohol_values <- data.frame(type, value)
+alcohol_values$type <- as.factor(alcohol_values$type)
+alcohol_values$type <- reorder(alcohol_values$type, c(3,2,1))
+
+dry_no_stigma <- dry %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+dry_stigma <- dry %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+dry_stigma_alert <- dry %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(dry_no_stigma, dry_stigma, dry_stigma_alert)
+dry_values <- data.frame(type, value)
+dry_values$type <- as.factor(dry_values$type)
+dry_values$type <- reorder(dry_values$type, c(3,2,1))
+
+mp <- meth_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Words") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+alcp <- alcohol_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "red") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +  
+  ylab("Number of Words") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+adp <- addiction_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "darkgreen") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Words") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+dp <- dry_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "purple") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Words") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+fig <- ggarrange(mp, alcp,adp, dp, labels = c("r/meth","r/alcohol", "r/addiction","r/dryalcoholics"),font.label = list(size = 10))
+annotate_figure(fig, 
+                top = "Average Number of Words Within a Conversation")
+```
+
+Once again we find the same trend. Posts with a stigma word, especially a stigma alert word, result in more comments and words than those without. It appears that the type of user has little impact on the outcome, as we see the same result in all four subreddits. Therefore, we can say this is not an isolated phenomenon to just the cocaine subreddit, but a consistent pattern across the different communities. 
+
+```{r c6, echo=FALSE}
+meth_no_stigma <- meth %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+meth_stigma <- meth %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+meth_stigma_alert <- meth %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(meth_no_stigma, meth_stigma, meth_stigma_alert)
+meth_values <- data.frame(type, value)
+meth_values$type <- as.factor(meth_values$type)
+meth_values$type <- reorder(meth_values$type, c(3,2,1))
+
+addiction_no_stigma <- addiction %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+addiction_stigma <- addiction %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+addiction_stigma_alert <- addiction %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(addiction_no_stigma, addiction_stigma, addiction_stigma_alert)
+addiction_values <- data.frame(type, value)
+addiction_values$type <- as.factor(addiction_values$type)
+addiction_values$type <- reorder(addiction_values$type, c(3,2,1))
+
+alcohol_no_stigma <- alcohol %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+alcohol_stigma <- alcohol %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+alcohol_stigma_alert <- alcohol %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(alcohol_no_stigma, alcohol_stigma, alcohol_stigma_alert)
+alcohol_values <- data.frame(type, value)
+alcohol_values$type <- as.factor(alcohol_values$type)
+alcohol_values$type <- reorder(alcohol_values$type, c(3,2,1))
+
+dry_no_stigma <- dry %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+dry_stigma <- dry %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+dry_stigma_alert <- dry %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(num_comments)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(dry_no_stigma, dry_stigma, dry_stigma_alert)
+dry_values <- data.frame(type, value)
+dry_values$type <- as.factor(dry_values$type)
+dry_values$type <- reorder(dry_values$type, c(3,2,1))
+
+mp <- meth_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Comments") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+alcp <- alcohol_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "red") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +  
+  ylab("Number of Comments") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+adp <- addiction_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "darkgreen") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Comments") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+dp <- dry_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "purple") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Comments") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+fig <- ggarrange(mp, alcp,adp, dp, labels = c("r/meth","r/alcohol", "r/addiction","r/dryalcoholics"),font.label = list(size = 10))
+annotate_figure(fig, 
+                top = "Average Number of Comments Within a Conversation")
+```
+
+## Sentiment Analysis
+
+For the purposes of the sentiment analysis, we used the AFINN sentiment dictionary to give a score to each comment within a conversation. Then we added up the comments' scores to find the conversation sentiment. The goal is to see if we can find a trend between the grouping of conversations and the overall sentiment score.
+
+First, we started with the cocaine subreddit again.
+
+```{r c7, echo=FALSE}
+mean_no_stigma <- data %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+mean_stigma <- data %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+mean_stigma_alert <- data %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(mean_no_stigma, mean_stigma, mean_stigma_alert)
+
+mean_values <- data.frame(type, value)
+mean_values$type <- as.factor(mean_values$type)
+mean_values$type <- reorder(mean_values$type, c(3,2,1))
+
+mean_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.6, color="white", size=3.5)+
+  coord_flip() +
+  ggtitle("Average Conversation Sentiment within a Reddit Conversation") +
+  ylab("Sentiment Score") +
+  xlab("Group") +
+  labs(caption = "From r/cocaine") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+From the start, we can already see that the overall sentiment score actually increases when stigma words are present. The first reason for this may be that, since the stigma alert posts have the most words and comments in general, it may just be a matter of volume.
+
+```{r c8, echo=FALSE}
+d2 <- data %>%
+  mutate(score_per_comment = afinn_score / num_comments)
+
+for(i in 1:nrow(d2)){
+  if(is.na(d2[i,"score_per_comment"])){
+    d2[i, "score_per_comment"] = 0
+  }
+}
+
+mean_no_stigma <- d2 %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(score_per_comment)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+mean_stigma <- d2 %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(score_per_comment)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+mean_stigma_alert <- d2 %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(score_per_comment)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(mean_no_stigma, mean_stigma, mean_stigma_alert)
+
+mean_values <- data.frame(type, value)
+mean_values$type <- as.factor(mean_values$type)
+mean_values$type <- reorder(mean_values$type, c(3,2,1))
+
+mean_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(value, digits = 4)), hjust=1.6, color="white", size=3.5)+
+  coord_flip() +
+  ggtitle("Average Sentiment Score per Comment") +
+  ylab("Sentiment Score") +
+  xlab("Group") +
+  labs(caption = "From r/cocaine") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+After we normalized the sentiment score by the number of comments, our results do not change. The highly stigmatized posts still result in higher sentiment scores for the rest of the conversation. It should be noted here that the difference between the groups has become very small. 
+
+```{r c9, echo=FALSE}
+meth_no_stigma <- meth %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+meth_stigma <- meth %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+meth_stigma_alert <- meth %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(meth_no_stigma, meth_stigma, meth_stigma_alert)
+
+sent_no_stigma <- meth %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+
+sent_stigma <- meth %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+
+sent_stigma_alert <- meth %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+sentiment <- c(sent_no_stigma, sent_stigma, sent_stigma_alert)
+meth_values <- data.frame(type, value, sentiment)
+
+
+meth_values$type <- as.factor(meth_values$type)
+meth_values$type <- reorder(meth_values$type, c(3,2,1))
+
+addiction_no_stigma <- addiction %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+addiction_stigma <- addiction %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+addiction_stigma_alert <- addiction %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(addiction_no_stigma, addiction_stigma, addiction_stigma_alert)
+
+sent_no_stigma <- addiction %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+
+sent_stigma <- addiction %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+
+sent_stigma_alert <- addiction %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+sentiment <- c(sent_no_stigma, sent_stigma, sent_stigma_alert)
+addiction_values <- data.frame(type, value, sentiment)
+
+addiction_values$type <- as.factor(addiction_values$type)
+addiction_values$type <- reorder(addiction_values$type, c(3,2,1))
+
+alcohol_no_stigma <- alcohol %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+alcohol_stigma <- alcohol %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+alcohol_stigma_alert <- alcohol %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(alcohol_no_stigma, alcohol_stigma, alcohol_stigma_alert)
+
+sent_no_stigma <- alcohol %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+
+sent_stigma <- alcohol %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+
+sent_stigma_alert <- alcohol %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+sentiment <- c(sent_no_stigma, sent_stigma, sent_stigma_alert)
+alcohol_values <- data.frame(type, value, sentiment)
+
+alcohol_values$type <- as.factor(alcohol_values$type)
+alcohol_values$type <- reorder(alcohol_values$type, c(3,2,1))
+
+dry_no_stigma <- dry %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+dry_stigma <- dry %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+dry_stigma_alert <- dry %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(comment_word_count)) %>%
+  pull(mean) %>%
+  round(digits = 2)
+
+
+type <- c('No Stigma Words', 'Stigma Words', 'Stigma Alert Words')
+value <- c(dry_no_stigma, dry_stigma, dry_stigma_alert)
+
+sent_no_stigma <- dry %>%
+  filter(contains_stigma == FALSE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+
+sent_stigma <- dry %>%
+  filter(contains_stigma == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+
+sent_stigma_alert <- dry %>%
+  filter(stigma_alert == TRUE) %>%
+  summarise(mean = mean(afinn_score)) %>%
+  pull(mean)
+
+sentiment <- c(sent_no_stigma, sent_stigma, sent_stigma_alert)
+dry_values <- data.frame(type, value, sentiment)
+
+dry_values$type <- as.factor(dry_values$type)
+dry_values$type <- reorder(dry_values$type, c(3,2,1))
+
+mp <- meth_values %>%
+  ggplot(aes(x = type, y = sentiment)) + geom_bar(stat = "identity", width = 0.7, fill = "steelblue") +
+  geom_text(aes(label=round(sentiment, digits = 2)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Score") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+alcp <- alcohol_values %>%
+  ggplot(aes(x = type, y = sentiment)) + geom_bar(stat = "identity", width = 0.7, fill = "red") +
+  geom_text(aes(label=round(sentiment, digits = 2)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +  
+  ylab("Score") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+adp <- addiction_values %>%
+  ggplot(aes(x = type, y = sentiment)) + geom_bar(stat = "identity", width = 0.7, fill = "darkgreen") +
+  geom_text(aes(label=round(sentiment, digits = 2)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Score") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+dp <- dry_values %>%
+  ggplot(aes(x = type, y = sentiment)) + geom_bar(stat = "identity", width = 0.7, fill = "purple") +
+  geom_text(aes(label=round(sentiment, digits = 2)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Score") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+fig <- ggarrange(mp, alcp,adp, dp, labels = c("r/meth","r/alcohol", "r/addiction","r/dryalcoholics"),font.label = list(size = 10))
+annotate_figure(fig, 
+                top = "Average Conversation Sentiment Score")
+```
+
+We find the same results for the other subreddits as well. Stigma posts produce more positive comments on average for each subreddit that we analyzed. 
+
+
+```{r c10, echo=FALSE}
+
+
+
+mp <- meth_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, aes(fill = sentiment)) +
+  geom_text(aes(label=round(value, digits = 2)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Words") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_gradient(limit = c(0,20), low = "darkblue", high = "red")
+
+
+alcp <- alcohol_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, aes(fill = sentiment)) +
+  geom_text(aes(label=round(value, digits = 2)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +  
+  ylab("Number of Words") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_gradient(limit = c(0,20), low = "darkblue", high = "red")
+
+adp <- addiction_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, aes(fill = sentiment)) +
+  geom_text(aes(label=round(value, digits = 2)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Words") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_gradient(limit = c(0,20), low = "darkblue", high = "red")
+
+dp <- dry_values %>%
+  ggplot(aes(x = type, y = value)) + geom_bar(stat = "identity", width = 0.7, aes(fill = sentiment)) +
+  geom_text(aes(label=round(value, digits = 2)), hjust=1.25, color="white", size=3.5)+
+  coord_flip() +
+  ylab("Number of Words") +
+  xlab("Group") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_gradient(limit = c(0,20), low = "darkblue", high = "red")
+
+fig <- ggarrange(mp, alcp,adp, dp, labels = c("r/meth","r/alcohol", "r/addiction","r/dryalcoholics"),font.label = list(size = 10), common.legend = TRUE)
+annotate_figure(fig, 
+                top = "Average Number of Words Within a Conversation")
+```
+
+## Conclusion
+
+On the topic of conversation length, we can clearly see that stigma words, and especially highly stigmatizing words, produce longer conversations in these communities. The better question is why? Further analysis could include combining sentiment score and conversation length to see if there is a connection between the two or to find a better model of the relationship between stigma words and conversation length.
