@@ -1,0 +1,427 @@
+---
+title: "Stigma Analysis"
+author: "Alexandrea Tucker"
+date: "4/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r, include = FALSE}
+# this line for setting the working directory
+# set to the directory that holds the data
+# setwd("C:/Users/tucam/Documents/DS 401/stigma data")
+```
+
+
+## Libraries  
+
+```{r, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(corpus)
+library(stringr)
+library(ggthemes)
+library(tidytext)
+library(textdata)
+```
+
+## Functions  
+
+```{r}
+Clean_String <- function(string){
+  # Lowercase
+  temp <- tolower(string)
+  # Remove everything that is not a number or letter (may want to keep more 
+  # stuff in your actual analyses). 
+  temp <- stringr::str_replace_all(temp,"[^a-zA-Z\\s]", " ")
+  # Shrink down to just one white space
+  temp <- stringr::str_replace_all(temp,"[\\s]+", " ")
+  # Split it
+  temp <- stringr::str_split(temp, " ")[[1]]
+  # Get rid of trailing "" if necessary
+  indexes <- which(temp == "")
+  if(length(indexes) > 0){
+    temp <- temp[-indexes]
+  } 
+  return(paste(temp, collapse = ' '))
+}
+```
+
+
+## Data
+
+
+### Addictionary data
+
+Dictionary of addiction words (words associated w/ stigma are indicated)
+
+```{r}
+addictionary <- read.csv("addictionary.csv")
+```
+
+
+### Comments data
+
+Comments (data collected by Harsha)
+
+```{r}
+comments <- read.csv("retoplevelcomments.csv")
+```
+
+#### Clean comments data
+
+
+
+There issues when exporting the data from excel. Due to limited time, I do not have time to fix this problem. Here is a quick fix. I only want subreddits correctly named
+
+```{r}
+subnames <- c('alcohol', 'alcoholicsanonymous', 'alcoholism', 'stopdrinking', 'dryalcoholics', 'REDDITORSINRECOVERY', 'Alcoholism_Medication', 'addiction', 'Sober', 'meth', 'Drugs', 'leaves', 'cocaine', 'cripplingalcoholism')
+
+correctcomments <- filter(comments, subreddit %in% subnames)
+```
+
+### Posts data
+
+Posts (data collected by Harsha)
+
+```{r}
+posts <- read.csv("redditposts.csv")
+```
+
+
+#### Clean posts data
+
+
+There issues when exporting the data from excel. Due to limited time, I do not have time to fix this problem. Here is a quick fix. I only want subreddits correctly named
+
+```{r}
+subnames <- c('alcohol', 'alcoholicsanonymous', 'alcoholism', 'stopdrinking', 'dryalcoholics', 'REDDITORSINRECOVERY', 'Alcoholism_Medication', 'addiction', 'Sober', 'meth', 'Drugs', 'leaves', 'cocaine', 'cripplingalcoholism')
+
+correct <- filter(posts, subreddit %in% subnames)
+```
+
+
+These are the only the columns I want to consider:
+
+```{r}
+subposts <- correct %>% select(created_utc, subreddit, author, dom, url, title, selftext, id, name)
+```
+
+
+```{r}
+subposts[, 1] <- sapply(subposts[, 1], as.numeric)
+```
+
+
+This takes some time to run. The final cleaned posts dataset is cleanposts1.
+
+```{r}
+#columns interested in in posts
+cleanposts <- subposts %>% select(subreddit, author, dom, url, title, selftext, id, name)
+
+cleanposts1 <- cleanposts
+
+for (i in 1:length(cleanposts1$title)) {
+  cleanposts1$title[i] <- Clean_String(cleanposts$title[i])
+  cleanposts1$selftext[i] <- Clean_String(cleanposts$selftext[i])
+}
+```
+
+
+## Stigmatizing Words
+
+```{r}
+# stigma words from addictionary
+stigmadict <- addictionary %>% filter(Type == "Stigma Alert")
+stigmawords <- stigmadict %>% select(Word)
+```
+
+```{r}
+head(stigmawords)
+```
+
+
+```{r}
+# stems from stigma words
+stigmalist <- stigmawords$Word
+
+tokens <- text_tokens(stigmalist, stemmer = "en")
+tokenslist <- unlist(tokens)
+stems <- tokenslist[-c(21,23)]
+```
+
+```{r}
+head(data.frame(stems))
+```
+
+
+
+## Which post titles or selftext contain stigma?
+
+To answer this question we will use the the stigma stems. 
+
+```{r}
+
+contains_stigma <- c()
+for (i in 1:length(cleanposts1$title)) {
+  stigma_indicator <- FALSE
+  for (j in 1:length(stems)) {
+    if (grepl(stems[j], cleanposts1$title[i], fixed = TRUE)) {
+      stigma_indicator <- TRUE
+    }
+    if (grepl(stems[j], cleanposts1$selftext[i], fixed = TRUE)) {
+      stigma_indicator <- TRUE
+    }
+  }
+  
+  contains_stigma <- c(contains_stigma, stigma_indicator)
+  
+}
+```
+
+
+
+```{r}
+cleanposts1$contains_stigma <- contains_stigma
+
+
+ggplot(data = cleanposts1) + geom_bar(mapping = aes(x = contains_stigma))
+```
+
+
+## Which comments contain stigma?
+
+```{r}
+comment_contains_stigma <- c()
+for (i in 1:length(correctcomments$body)) {
+  stigma_indicator <- FALSE
+  for (j in 1:length(stems)) {
+    if (grepl(stems[j], correctcomments$body[i], fixed = TRUE)) {
+      stigma_indicator <- TRUE
+    }
+  }
+  
+  comment_contains_stigma <- c(comment_contains_stigma, stigma_indicator)
+  
+}
+```
+
+```{r}
+correctcomments$contains_stigma <- comment_contains_stigma
+```
+
+
+
+
+Save data cause I don't want to run all of this again
+
+```{r}
+write_excel_csv(data.frame(comment_contains_stigma), "C:/Users/tucam/Documents/DS 401/stigma data/comment_contains_stigma_r.csv")
+
+
+write_excel_csv(correctcomments, "C:/Users/tucam/Documents/DS 401/stigma data/correctcomments_r.csv")
+
+
+write_excel_csv(cleanposts1, "C:/Users/tucam/Documents/DS 401/stigma data/cleanposts1_r.csv")
+```
+
+
+## Data with stigma
+
+```{r}
+stigma_posts <- read.csv("cleanposts1_r.csv")
+
+stigma_comments <- read.csv("correctcomments_r.csv")
+
+names(stigma_comments)[1] <- "body"
+```
+
+
+
+
+```{r}
+ggplot(data = stigma_posts) + geom_bar(mapping = aes(x = contains_stigma)) +
+  labs(x = "Contains Stigma", y = "Count") + 
+  ggtitle("Count of Post Titles Containing Stigma") +
+  theme(plot.title = element_text(size = 10, face = "bold", margin = margin(10, 0, 10, 0))) +
+  theme_stata() + scale_colour_stata()
+```
+
+```{r}
+ggplot(data = stigma_comments) + geom_bar(mapping = aes(x = contains_stigma)) +
+  labs(x = "Contains Stigma", y = "Count") + 
+  ggtitle("Count of Comments Containing Stigma") +
+  theme(plot.title = element_text(size = 10, face = "bold", margin = margin(10, 0, 10, 0))) +
+  theme_stata() + scale_colour_stata()
+```
+
+
+
+
+```{r}
+affin <- get_sentiments("afinn")
+```
+
+## Measure Sentiment on Posts
+
+```{r}
+
+tidy_posts <- stigma_posts %>% mutate(linenumber = row_number()) %>% unnest_tokens(word, title)
+
+```
+
+
+### NRC dictionary 
+
+Here, I am looking at the negative dictionary. I am counting the number of words associated with negativity. 
+
+```{r}
+nrc_negative <- get_sentiments("nrc") %>% filter(sentiment == "negative")
+
+all <- tidy_posts %>%inner_join(nrc_negative) %>% count(word, sort = TRUE)
+
+negative <- tidy_posts %>% filter(contains_stigma == TRUE) %>%inner_join(nrc_negative) %>% count(word, sort = TRUE)
+other <- tidy_posts %>% filter(contains_stigma == FALSE) %>%inner_join(nrc_negative) %>% count(word, sort = TRUE)
+```
+
+
+```{r}
+total_post_sentiment <- negative %>% inner_join(get_sentiments("bing")) %>% pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+
+```{r}
+total_post_sentiment_other <- other %>% inner_join(get_sentiments("bing")) %>% pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+```{r}
+total_post_sentiment_all <- tidy_posts %>% inner_join(get_sentiments("bing")) %>% 
+  count(contains_stigma, index = linenumber, sentiment) %>% 
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+
+```{r}
+ggplot(total_post_sentiment_all, aes(index, sentiment, fill = contains_stigma)) + geom_col(show.legend = FALSE) +
+  facet_wrap(~contains_stigma)
+```
+
+
+## Sentiment Analysis of Comment Data
+
+```{r}
+
+tidy_comments <- stigma_comments %>% mutate(linenumber = row_number()) %>% unnest_tokens(word, body)
+
+```
+
+
+### NRC dictionary: measure count of negative words 
+
+
+```{r}
+all_comments <- tidy_comments %>% inner_join(nrc_negative) %>% count(word, sort = TRUE)
+```
+
+```{r}
+total_comment_sentiment_all <- tidy_comments %>% inner_join(get_sentiments("bing")) %>% 
+  count(contains_stigma, index = linenumber, sentiment) %>% 
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+```{r}
+ggplot(total_comment_sentiment_all, aes(index, sentiment, fill = contains_stigma)) + geom_col(show.legend = FALSE) +
+  facet_wrap(~contains_stigma)
+```
+
+
+
+
+```{r}
+affin_posts_stigma <- tidy_posts %>% filter(contains_stigma == TRUE) %>% inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber) %>%
+  summarise(sentiment = sum(value)) %>%
+  mutate(method = "AFINN", contains_stigma = TRUE)
+```
+
+```{r}
+affin_posts_nostigma <- tidy_posts %>% filter(contains_stigma == FALSE) %>% inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber) %>%
+  summarise(sentiment = sum(value)) %>%
+  mutate(method = "AFINN", contains_stigma = FALSE)
+```
+
+ggplot(data = stigma_posts) + geom_bar(mapping = aes(x = contains_stigma)) +
+  labs(x = "Contains Stigma", y = "Count") + 
+  ggtitle("Count of Post Titles Containing Stigma") +
+  theme(plot.title = element_text(size = 10, face = "bold", margin = margin(10, 0, 10, 0))) +
+  theme_stata() + scale_colour_stata()
+```{r}
+bind_rows(affin_posts_stigma, affin_posts_nostigma) %>%
+  ggplot(aes(index, sentiment, fill = contains_stigma)) + 
+  labs(x = "Index", y = "Sentiment Score") +
+  ggtitle("Sentiment Score of Posts") +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~contains_stigma, ncol = 1, scales= "free_y") +
+  ylim(-6, 6) +
+  theme_stata() + scale_colour_stata()
+```
+```{r}
+mean(affin_posts_nostigma$sentiment)
+```
+```{r}
+mean(affin_posts_stigma$sentiment)
+```
+
+
+
+
+```{r}
+affin_comments_stigma <- tidy_comments %>% filter(contains_stigma == TRUE) %>% inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber) %>%
+  summarise(sentiment = sum(value)) %>%
+  mutate(method = "AFINN", contains_stigma = TRUE)
+```
+
+
+```{r}
+affin_comments_nostigma <- tidy_comments %>% filter(contains_stigma == FALSE) %>% inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber) %>%
+  summarise(sentiment = sum(value)) %>%
+  mutate(method = "AFINN", contains_stigma = FALSE)
+```
+bind_rows(affin_posts_stigma, affin_posts_nostigma) %>%
+  ggplot(aes(index, sentiment, fill = contains_stigma)) + 
+  labs(x = "Index", y = "Sentiment Score") +
+  ggtitle("Sentiment Score of Posts") +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~contains_stigma, ncol = 1, scales= "free_y") +
+  ylim(-6, 6) +
+  theme_stata() + scale_colour_stata(
+
+```{r}
+
+
+bind_rows(affin_comments_stigma, affin_comments_nostigma) %>%
+  ggplot(aes(index, sentiment, fill = contains_stigma)) + 
+  labs(x = "Index", y = "Sentiment Score") +
+  ggtitle("Sentiment Score of Comments") +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~contains_stigma, ncol = 1, scales= "free_y") +
+  ylim(-6, 6) +
+  theme_stata() + scale_colour_stata()
+```
+```{r}
+mean(affin_comments_nostigma$sentiment)
+```
+```{r}
+mean(affin_comments_stigma$sentiment)
+```
